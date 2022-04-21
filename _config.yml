@@ -82,8 +82,8 @@ panelbear_analytics:  # panelbear analytics site ID (format: XXXXXXXXX)
 # Blog
 # -----------------------------------------------------------------------------
 
-blog_name: al-folio  # your blog must have a name for it to show up in the nav bar
-blog_description: a simple whitespace theme for academics
+blog_name: Xusheng's Notes  # your blog must have a name for it to show up in the nav bar
+blog_description: My personal thoughts and working notes in distributed systems.
 permalink: /blog/:year/:title/
 
 # Pagination
