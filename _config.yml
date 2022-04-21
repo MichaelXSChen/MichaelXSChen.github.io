@@ -203,8 +203,8 @@ jekyll-archives:
 
 scholar:
 
-  last_name: Einstein
-  first_name: [Albert, A.]
+  last_name: Xusheng
+  first_name: Chen
 
   style: apa
   locale: en
@@ -223,6 +223,9 @@ scholar:
   details_dir: bibliography
   details_layout: bibtex.html
   details_link: Details
+
+  sort_by: year
+  order: descending
 
   query: "@*"
 

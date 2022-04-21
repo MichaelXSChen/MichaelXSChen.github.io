@@ -69,7 +69,7 @@
             {%- endif -%}
           {%- endfor %}
           </div>
-
+          <div><b>{{entry.comments}}</b></div>
           <!-- Journal/Book title and date -->
           {% if entry.type == "article" -%}
             {%- capture entrytype -%}<em>{{entry.journal}}</em>{%- endcapture -%}
