@@ -14,14 +14,14 @@ profile:
 
 news: true  # includes a list of news items
 selected_papers: true # includes a list of papers marked as "selected={true}"
-social: true  # includes social icons at the bottom of the page
+social: false  # includes social icons at the bottom of the page
 ---
 
 I am a fourth year PhD student in the Computer Science Department at the University of Hong Kong, supervised by [Dr. Heming Cui](http://www.cs.hku.hk/~heming). My research focuses distributed consensus protocols, fault tolerance systems, distributed transaction processing systems, and blockchain systems.
 
 My research interests also include building highly-efficient distributed systems leveraging datacenter networking hardware (e.g., RDMA) and building secure distributed systems leveraging hardware trusted execution environments (e.g., Intel SGX).
 
-Before my current program, I received Bachelor of Engineering degree from the University of Hong Kong with first class honour. I also enjoyed a wonderful half-year exchange program at UCSD during my undergraduate study.
+Before my current program, I received Bachelor of Engineering degree from the University of Hong Kong with first class honour. I also enjoyed a wonderful exchange program at UCSD during my undergraduate study.
 
 I am from [Shenyang](https://en.wikipedia.org/wiki/Shenyang), a beautiful city in northeast China.
 
