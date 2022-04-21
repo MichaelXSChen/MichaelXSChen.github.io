@@ -1,7 +1,8 @@
 ---
 layout: post
-date: 2016-01-15 07:59:00-0400
+date: 2021-11-21
 inline: true
 ---
 
-A simple inline announcement with Markdown emoji! :sparkles: :smile:
+Our paper "Efficient and DoS-resistant Consensus for Permissioned Blockchains"
+was accepted by [Performance '21](https://www.performance2021.deib.polimi.it/).
