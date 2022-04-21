@@ -1,6 +1,7 @@
 ---
-layout: page
-title: cv
-date: 2021-07-04 17:39:00
-redirect: /assets/pdf/example_pdf.pdf
+title: CV
+layout: redirected
+nav: true
+permalink: /cv/
+redirect_to:  https://michaelxschen.github.io/CV/cv.pdf
 ---
