@@ -203,10 +203,10 @@ jekyll-archives:
 
 scholar:
 
-  last_name: Xusheng
-  first_name: Chen
+  last_name: Chen
+  first_name: Xusheng
 
-  style: acm-sig-proceedings
+  style: apa
   locale: en
 
   source: /_bibliography/

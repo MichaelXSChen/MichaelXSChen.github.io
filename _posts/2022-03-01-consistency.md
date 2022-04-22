@@ -2,13 +2,13 @@
 layout: post
 title:  No-stale-reads vs real-time ordering
 date:   2022-03-01
-description: Some discussion on consistency models. 
+description: Some discussions on consistency models. 
 tags: consistency, distributed-database
 categories: thoughts
 ---
 
 
-tl; dr
+TL;DR
 
 For single key, no-stale-reads considers each read independently, 
 while linearizability also restricts each read value w.r.t. other reads.
@@ -19,7 +19,8 @@ For multiple keys, things become a little bit complicated the overall theme is t
 When doing my projects, many times I got confused with the guarantee
 of "the system provides no stale reads" (i.e., regularity) and "the system preserves
 all real-time ordering requirements" (i.e.,  linearizability). I found two constructions to distinguish
-them. The first construction (from [1]) is for single-key operations as shown below, where
+them. The first construction (from 
+{% cite nonstale:stack --file ref %} is for single-key operations as shown below, where
 `wwww` and `rrr` means the duration of one single write/read operation. 
 ```
 Key(x);  0                  1
@@ -36,7 +37,7 @@ P2's read in any history/schedule. Symmetrically, if P3's read returns
 
 
 
-The second construction is for transactional systems (the construction in my DAST paper[2]).
+The second construction is for transactional systems (the construction in my DAST paper {% cite chen2021achieving --file ref %}).
 Consider the following construction 
 with two keys A and B. T2 and T3 only access one key each, while T1 is a distributed 
 transaction accessing both keys. 
@@ -50,7 +51,8 @@ A:   T1    T2
 B:              T3    T1
 ```
 
-Recently, I read the RSS paper [3], which helps to shed light on this problem. 
+Recently, I read the RSS paper {% cite helt2021regular --file ref %}
+, which helps to shed light on this problem. 
 RSS ensures all reads see finished writes (i.e., no stale reads) and preserves 
 the real-time ordering from write operations/transactions to other operations. 
 RSS is proved to be *invariant-equivalent* to linearizability.
@@ -74,7 +76,7 @@ consistency levels.
 ## Shared Registers
 
 The basic single-write multiple-writer shared register model was first proposed by 
-Lamport in 1986[4], together with the *atomic, regular, and safe* consistency models. 
+Lamport in 1986 {% cite lamport1986interprocess --file ref %}, together with the *atomic, regular, and safe* consistency models. 
 This model only has one writer and one key, which serve as the base for all 
 subsequent consistency models. 
 
@@ -82,7 +84,7 @@ subsequent consistency models.
 writes; otherwise, the reads can return any value (even a corrupted one). 
 Note that in the basic model, 
 there is only one writer, so no concurrent writes. Such registers may show in shared 
-registers on chips [4].
+registers on chips {% cite lamport1986interprocess --file ref %}.
 
 - A regular register is a little stronger. It also requires that reads must return the 
 value that is at least as recent as latest finished writes, while it can freely 
@@ -108,9 +110,7 @@ regularity for single register: read must see a version at least as recent as
 the latest finished writes. However, this construction has two registers, but the definition 
 does not discuss the relation of two (unrelated) writes on two different registers. 
 As far as I am concerned, there 
-is only one work {% cite viotti2016consistency --file ref %}
-
-
+is only one work {% cite viotti2016consistency --file ref %} that
 defines regularity for multiple keys with the following three requirements: 
 
 * There is an equivalent total order (a.k.a., the arbitration order) of all requests.  
@@ -126,30 +126,20 @@ the real-time ordering between T2 and T3 if T2 contains write operations.
 
 
 
-However, personally, I think this definition is kind-of far fetched, as the 
-intuition behind Lamport's definition of "regularity" is that the register 
+However, this general definition has not reached an agreement in academia/industry,
+as the intuition behind Lamport's definition of "regularity" is that the register 
 has no stale reads: all finished writes must be visible to subsequent reads
 until it is overwritten. 
 
 
-I will discuss more regular consistency models defined in [6] on multi-writer regularity
+I will discuss more regular consistency models defined in {% cite shao2011multiwriter --file ref %}
+on multi-writer regularity
 in subsequent posts. 
 
-References
+References:
 ----------
 
-{% bibliography --file ref --cited --template bib-no-abbr %}
+{% bibliography --file ref --cited --template post-ref %}
 
-## References:
 
-[1]: https://stackoverflow.com/questions/8871633/whats-the-difference-between-safe-regular-and-atomic-registers
 
-[2]: Chen, X., Song, H., Jiang, J., Ruan, C., Li, C., Wang, S., ... & Cui, H. (2021, April). Achieving low tail-latency and high scalability for serializable transactions in edge computing. In Proceedings of the Sixteenth European Conference on Computer Systems (pp. 210-227).
-
-[3]: Helt, J., Burke, M., Levy, A., & Lloyd, W. (2021, October). Regular Sequential Serializability and Regular Sequential Consistency. In Proceedings of the ACM SIGOPS 28th Symposium on Operating Systems Principles (pp. 163-179).
-
-[4]: Lamport, L. (1986). On interprocess communication. Distributed computing, 1(2), 86-101.
- 
-[5] Viotti, P., & Vukolić, M. (2016). Consistency in non-transactional distributed storage systems. ACM Computing Surveys (CSUR), 49(1), 1-34.
-
-[6] Cheng Shao, Evelyn Pierce, and Jennifer L. Welch. 2011. Multiwriter Consistency Conditions for Shared Memory Registers. SIAM Journal on Computing 40, 1 (2011), 28–62
