@@ -206,7 +206,7 @@ scholar:
   last_name: Xusheng
   first_name: Chen
 
-  style: apa
+  style: acm-sig-proceedings
   locale: en
 
   source: /_bibliography/
