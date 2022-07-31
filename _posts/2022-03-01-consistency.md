@@ -3,7 +3,7 @@ layout: post
 title:  No-stale-reads vs real-time ordering
 date:   2022-03-01
 description: Some discussions on consistency models. 
-tags: consistency, distributed-database
+tags: consistency distributed-database
 categories: thoughts
 ---
 
