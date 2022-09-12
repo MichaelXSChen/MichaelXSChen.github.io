@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <!-- Head -->
+  <head>    <!-- Metadata, OpenGraph and Schema.org -->
+    
+    <!-- Website verification -->
+    <meta name="google-site-verification" content="" /><meta name="msvalidate.01" content="" />
+
+    <!-- Standard metadata -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Xusheng Chen's Homepage | On the Usage of Atomic Clocks in Spanner</title>
+    <meta name="author" content="Xusheng  Chen" />
+    <meta name="description" content="Spanner uses Atomic Clocks for read-only transactions." />
+    <meta name="keywords" content="distributed database" />
+
+
+    <!-- Bootstrap & MDB -->
+    <link href="https://unpkg.com/bootstrap@4.6.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha256-DF7Zhf293AJxJNTmh5zhoYYIMs2oXitRfBjY+9L//AY=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/mdbootstrap@4.20.0/css/mdb.min.css" integrity="sha256-jpjYvU3G3N6nrrBwXJoVEYI/0zw8htfFnhT9ljN3JJw=" crossorigin="anonymous" />
+
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://unpkg.com/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" integrity="sha256-mUZM63G8m73Mcidfrv5E+Y61y7a12O5mW4ezU3bxqW4=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/academicons@1.9.1/css/academicons.min.css" integrity="sha256-i1+4qU2G2860dGGIOJscdC30s9beBXjFfzjWLjBRsBg=" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Roboto+Slab:100,300,400,500,700|Material+Icons">
+
+    <!-- Code Syntax Highlighting -->
+    <link rel="stylesheet" href="/assets/css/github-highlight.css" media="none" id="highlight_theme_light" />
+
+    <!-- Styles -->
+    
+    <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚛️</text></svg>">
+    
+    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="canonical" href="https://michaelxschen.github.io/blog/2022/spanner/">
+    
+    <meta name="google-site-verification" content="hIGkTMm5o1EBurk5w58vT5-HiNIhn7xYiW_bK7Tvf74" />
+  
+    <!-- Dark Mode -->
+    
+    <link rel="stylesheet" href="/assets/css/github-highlight.css" media="none" id="highlight_theme_dark" />
+
+    <script src="/assets/js/theme.js"></script>
+    <script src="/assets/js/dark_mode.js"></script>
+    
+
+
+  </head>
+
+  <!-- Body -->
+  <body class="fixed-top-nav ">
+
+    <!-- Header -->
+    <header>
+
+      <!-- Nav Bar -->
+      <nav id="navbar" class="navbar navbar-light navbar-expand-sm fixed-top">
+        <div class="container">
+          <a class="navbar-brand title font-weight-lighter" href="https://michaelxschen.github.io/">Xusheng Chen's Homepage</a>
+          <!-- Navbar Toggle -->
+          <button class="navbar-toggler collapsed ml-auto" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar top-bar"></span>
+            <span class="icon-bar middle-bar"></span>
+            <span class="icon-bar bottom-bar"></span>
+          </button>
+
+          <div class="collapse navbar-collapse text-right" id="navbarNav">
+            <ul class="navbar-nav ml-auto flex-nowrap">
+
+              <!-- About -->
+              <li class="nav-item ">
+                <a class="nav-link" href="/">About</a>
+              </li>
+              
+              <!-- Blog -->
+              <li class="nav-item active">
+                <a class="nav-link" href="/blog/">Blog</a>
+              </li>
+
+              <!-- Other pages -->
+              <li class="nav-item ">
+                <a class="nav-link" href="/cv/">CV</a>
+              </li>
+              <li class="nav-item ">
+                <a class="nav-link" href="/publications/">Publications</a>
+              </li>
+
+              <!-- Toogle theme mode -->
+              <div class="toggle-container">
+                <a id="light-toggle">
+                  <i class="fas fa-moon"></i>
+                  <i class="fas fa-sun"></i>
+                </a>
+              </div>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Content -->
+    <div class="container mt-5">
+      <!-- _layouts/post.html -->
+
+<div class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">On the Usage of Atomic Clocks in Spanner</h1>
+    <p class="post-meta">April 1, 2022</p>
+    <p class="post-tags">
+      <a href="/blog/2022"> <i class="fas fa-calendar fa-sm"></i> 2022 </a>
+        ·  
+        <a href="/blog/tag/consistency">
+          <i class="fas fa-hashtag fa-sm"></i> consistency</a>  
+          <a href="/blog/tag/distributed-database">
+          <i class="fas fa-hashtag fa-sm"></i> distributed-database</a>  
+          
+        ·  
+        <a href="/blog/category/thoughts">
+          <i class="fas fa-tag fa-sm"></i> thoughts</a>  
+          
+
+    </p>
+  </header>
+
+  <article class="post-content">
+    <p>The Spanner <a class="citation" href="#spanner">(Corbett et al., 2013)</a> system has been well studied since it was published 
+in OSDI ‘12, and many geo-distributed databases (e.g., CockroachDB) following 
+Spanner have been built. Everyone knows that Spanner uses
+TrueTime/Atomic clocks to achieve 
+strict serializability (linearizability), but a key question 
+that I want to answer here is <em>what role TrueTime plays in
+Spanner’s protocol?</em> How does it contribute to Spanner’s guarantee?
+How should we design a system without such atomic clocks?</p>
+
+<h2 id="spanner-in-a-nutshell">Spanner in a Nutshell</h2>
+
+<p>Spanner is a geo-distributed database built by Google. 
+Spanner has a data model that is stronger than key-value stores but weaker 
+than fully relational databases.<br>
+Spanner adopts a layered design, with concurrency control (2PL) on top of 
+replication (Paxos). This design is easy to maintain, but it may 
+cause extra RTTs. Spanner has three types of transactions, namely read-write (RW) transactions, 
+consistent read-only 
+transactions (RO), and stale snapshot transactions (the namings may be 
+a little bit different from its original paper).</p>
+
+<p>The key weapon of Spanner is its TrueTime API based on atomic clocks and GPS. 
+The TrueTime API has a (at least practically) guaranteed offset among 
+clocks. Compared to traditional non-synchronized clocks, a node 
+in Spanner can predicate that a remote node’s clock has passed \(T\) 
+without communication, which brings Spanner unique strength on efficiently 
+ensuring consistency.</p>
+
+<h2 id="spanners-consistencyisolation">Spanner’s Consistency/Isolation</h2>
+
+<p>For read-write (RW) transactions, Spanner uses (strict) 2PL for concurrency control and 
+uses leader-based Paxos for replication. A RW transaction is triggered by its client: the 
+client first acquires all read locks, reads all values, and buffers all writes; 
+then, a client acquires all write locks and commits via 2PC. This is a standard 2PL,
+ and it actually 
+already ensures Strict Serializability (even with replication, as all read/write requests
+go through the leader) without TrueTime. A key invariant when assigning timestamp is 
+that the timestamp order should be the same as the equivalent serial order of 2PL.</p>
+
+<p>For read-only (RO) transactions, Spanner uses TrueTime to ensure their consistency. 
+For consistency, there are two main requirements for a RO transaction \(R\) at timestamp \(ts\). 
+First, Spanner needs to ensure that \(R\) sees <em>all</em> writes with timestamps smaller than
+\(ts\). This completeness enures <em>atomicity</em> because updates from the same transaction share the 
+same timestamp, so completeness already infers atomicity. 
+The completeness also preserves <em>serializability</em>: RW transactions are serialized 
+according to their timestamps, so completeness ensures that there is no gap in the 
+equivalent serial schedule of RW transactions. Completeness together with 
+the second requirement below also ensures the strictness of serializability.</p>
+
+<p>Second, to ensure “strictness” in strict serializability, Spanner must 
+ensure that a RO transaction’s timestamp is larger than all completed 
+RW transactions’. This is where Spanner’s TrueTime comes to help. Since 
+nodes’ clocks have a bounded offset, consider a RO transaction \(R\) starting at
+\(t\). When \(R\) starts, any other node’s clock is at most \(t +\frac{1}{2} offset\). 
+Therefore, assigning \(R\) with a timestamp larger than \(t +\frac{1}{2} offset\) is 
+enough for consistency.</p>
+
+<p>Without TrueTime, these two requirements become expensive to meet. For the first requirement, 
+Two key aspects are (1) to ensure that nodes will not travel back in the history and assign 
+transactions with past timestamps, and (2) to have a mechanism helping nodes to predicate 
+that all on-the-flight transactions. Achieving these two aspects efficiently in a geo-distributed 
+deployment is challenging. Ocean Vista <a class="citation" href="#oceanvista">(Fan &amp; Golab, 2019)</a> is an impressive work showing 
+how these two aspects can be met with commodity hardware while still ensuring high performance. 
+My previous work DAST <a class="citation" href="#chen2021achieving">(Chen et al., 2021)</a> also addresses these two aspects, but in a 
+more specific near-client computing deployment scenarios: data is assigned home regions based on geo-locality, 
+which brings DAST the potential for higher performance.</p>
+
+<p>For the second requirement, without TrueTime, a system must keep track of the timestamp of finished 
+transactions. This cannot be efficiently achieved in general cases for geo-distributed deployments, and 
+normally a RO has to wait/communicate with delay in the order of global RTT time. 
+This is actually in line with the SNOW <a class="citation" href="#snow">(Lu et al., 2016)</a> impossibility result, and explains why Google invest 
+to build such a strong hardware to support RO transactions. 
+There are two difficulties here. First, nodes’ clocks are not synchronized, so reading at a specific timestamp 
+is bounded by the global straggler (who can assign relevant read-write transactions). DAST somehow 
+sidesteps this difficulty because in DAST, for each key \(K\), only a restricted set of local nodes 
+can assign timestamps to RW transactions accessing \(K\). Second, most systems do not explicitly record the time 
+when each transaction <em>finishes</em>, so to ensure strict serializability, the system has to include a conservative 
+superset of finished transactions (e.g., those who are assigned timestamps). This superset makes the RO 
+must wait for un-finished transactions.</p>
+
+<p>Overall, there seems to be two chances for improving RO transactions in Strictly serializable databases:
+(1) strong data ownership based on locality (e.g,. SLOG <a class="citation" href="#oceanvista">(Fan &amp; Golab, 2019)</a>), 
+and (2) leveraging strongly synchronized clocks (e.g., recent works on NSDI <a class="citation" href="#geng2018exploiting">(Geng et al., 2018; Najafi &amp; Wei, 2022)</a> )</p>
+
+<h2 id="references">References:</h2>
+
+<ol class="bibliography">
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="najafi2022graham" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">Ali Najafi,  and Michael Wei
+          </span>.
+          <!-- Title -->
+          <span class="title">Graham: Synchronizing Clocks by Leveraging Local Clock Properties</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>In 19th USENIX Symposium on Networked Systems Design and Implementation (NSDI 22)</em> 2022
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="chen2021achieving" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">
+                  <em>Xusheng Chen </em>, <a href="https://haozesong.github.io/" target="_blank" rel="noopener noreferrer">Haoze Song </a>, <a href="http://i.cs.hku.hk/~jyjiang/" target="_blank" rel="noopener noreferrer">Jianyu Jiang </a>, Chaoyi Ruan,  <a href="http://staff.ustc.edu.cn/~chengli7/" target="_blank" rel="noopener noreferrer">Cheng Li </a>, Sen Wang,  Gong Zhang,  <a href="http://i.cs.hku.hk/~ckcheng" target="_blank" rel="noopener noreferrer">Reynold Cheng </a>, and <a href="http://i.cs.hku.hk/~heming/" target="_blank" rel="noopener noreferrer">Heming Cui </a>
+                  
+          </span>.
+          <!-- Title -->
+          <span class="title">Achieving low tail-latency and high scalability for serializable transactions in edge computing</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>In Proceedings of the Sixteenth European Conference on Computer Systems</em> 2021
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="oceanvista" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">Hua Fan,  and Wojciech Golab
+          </span>.
+          <!-- Title -->
+          <span class="title">Ocean vista: gossip-based visibility control for speedy geo-distributed transactions</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>Proceedings of the VLDB Endowment</em> 2019
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="geng2018exploiting" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">Yilong Geng,  Shiyu Liu,  Zi Yin,  Ashish Naik,  Balaji Prabhakar,  Mendel Rosenblum,  and Amin Vahdat
+          </span>.
+          <!-- Title -->
+          <span class="title">Exploiting a natural network effect for scalable, fine-grained clock synchronization</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>In 15th USENIX Symposium on Networked Systems Design and Implementation (NSDI 18)</em> 2018
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="snow" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">Haonan Lu,  Christopher Hodsdon,  Khiem Ngo,  Shuai Mu,  and Wyatt Lloyd
+          </span>.
+          <!-- Title -->
+          <span class="title">The SNOW Theorem and Latency-Optimal Read-Only Transactions</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>In 12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16)</em> 2016
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="spanner" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">James C Corbett,  Jeffrey Dean,  Michael Epstein,  Andrew Fikes,  Christopher Frost,  Jeffrey John Furman,  Sanjay Ghemawat,  Andrey Gubarev,  Christopher Heiser,  Peter Hochschild,  and  others
+          </span>.
+          <!-- Title -->
+          <span class="title">Spanner: Google’s globally distributed database</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>ACM Transactions on Computer Systems (TOCS)</em> 2013
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+</ol>
+
+  </article>
+
+</div>
+
+    </div>
+
+    <!-- Footer -->    
+    <footer class="fixed-bottom">
+      <div class="container mt-0">
+        © Copyright 2022 Xusheng  Chen. Powered by <a href="https://jekyllrb.com/" target="_blank" rel="noopener noreferrer">Jekyll</a> with <a href="https://github.com/alshedivat/al-folio" target="_blank" rel="noopener noreferrer">al-folio</a> theme. Hosted by <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a>.
+Last updated: September 12, 2022.
+      </div>
+    </footer>
+
+    <!-- JavaScripts -->
+    <!-- jQuery -->
+  <script src="https://unpkg.com/jquery@3.6.0/dist/jquery.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+
+    <!-- Bootsrap & MDB scripts -->
+  <script src="https://unpkg.com/@popperjs/core@2.11.2/dist/umd/popper.min.js" integrity="sha256-l/1pMF/+J4TThfgARS6KwWrk/egwuVvhRzfLAMQ6Ds4=" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/bootstrap@4.6.1/dist/js/bootstrap.min.js" integrity="sha256-SyTu6CwrfOhaznYZPoolVw2rxoY7lKYKQvqbtqN93HI=" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/mdbootstrap@4.20.0/js/mdb.min.js" integrity="sha256-NdbiivsvWt7VYCt6hYNT3h/th9vSTL4EDWeGs5SN3DA=" crossorigin="anonymous"></script>
+
+    <!-- Masonry & imagesLoaded -->
+  <script defer src="https://unpkg.com/masonry-layout@4.2.2/dist/masonry.pkgd.min.js" integrity="sha256-Nn1q/fx0H7SNLZMQ5Hw5JLaTRZp0yILA/FRexe19VdI=" crossorigin="anonymous"></script>
+  <script defer src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
+  <script defer src="/assets/js/masonry.js" type="text/javascript"></script>
+    
+  <!-- Medium Zoom JS -->
+  <script src="https://unpkg.com/medium-zoom@1.0.6/dist/medium-zoom.min.js" integrity="sha256-EdPgYcPk/IIrw7FYeuJQexva49pVRZNmt3LculEr7zM=" crossorigin="anonymous"></script>
+  <script src="/assets/js/zoom.js"></script><!-- Load Common JS -->
+  <script src="/assets/js/common.js"></script>
+
+    <!-- MathJax -->
+  <script type="text/javascript">
+    window.MathJax = {
+      tex: {
+        tags: 'ams'
+      }
+    };
+  </script>
+  <script defer type="text/javascript" id="MathJax-script" src="https://unpkg.com/mathjax@3.2.0/es5/tex-mml-chtml.js"></script>
+  <script defer src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id="></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', '');
+  </script><!-- Panelbear Analytics - We respect your privacy -->
+  <script async src="https://cdn.panelbear.com/analytics.js?site="></script>
+  <script>
+    window.panelbear = window.panelbear || function() { (window.panelbear.q = window.panelbear.q || []).push(arguments); };
+    panelbear('config', { site: '' });
+  </script>
+  </body>
+</html>
+

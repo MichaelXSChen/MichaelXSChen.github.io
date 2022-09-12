@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <!-- Head -->
+  <head>    <!-- Metadata, OpenGraph and Schema.org -->
+    
+    <!-- Website verification -->
+    <meta name="google-site-verification" content="" /><meta name="msvalidate.01" content="" />
+
+    <!-- Standard metadata -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Xusheng Chen's Homepage | No-stale-reads vs real-time ordering</title>
+    <meta name="author" content="Xusheng  Chen" />
+    <meta name="description" content="Some discussions on consistency models." />
+    <meta name="keywords" content="distributed database" />
+
+
+    <!-- Bootstrap & MDB -->
+    <link href="https://unpkg.com/bootstrap@4.6.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha256-DF7Zhf293AJxJNTmh5zhoYYIMs2oXitRfBjY+9L//AY=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/mdbootstrap@4.20.0/css/mdb.min.css" integrity="sha256-jpjYvU3G3N6nrrBwXJoVEYI/0zw8htfFnhT9ljN3JJw=" crossorigin="anonymous" />
+
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://unpkg.com/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" integrity="sha256-mUZM63G8m73Mcidfrv5E+Y61y7a12O5mW4ezU3bxqW4=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/academicons@1.9.1/css/academicons.min.css" integrity="sha256-i1+4qU2G2860dGGIOJscdC30s9beBXjFfzjWLjBRsBg=" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Roboto+Slab:100,300,400,500,700|Material+Icons">
+
+    <!-- Code Syntax Highlighting -->
+    <link rel="stylesheet" href="/assets/css/github-highlight.css" media="none" id="highlight_theme_light" />
+
+    <!-- Styles -->
+    
+    <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚛️</text></svg>">
+    
+    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="canonical" href="https://michaelxschen.github.io/blog/2022/consistency/">
+    
+    <meta name="google-site-verification" content="hIGkTMm5o1EBurk5w58vT5-HiNIhn7xYiW_bK7Tvf74" />
+  
+    <!-- Dark Mode -->
+    
+    <link rel="stylesheet" href="/assets/css/github-highlight.css" media="none" id="highlight_theme_dark" />
+
+    <script src="/assets/js/theme.js"></script>
+    <script src="/assets/js/dark_mode.js"></script>
+    
+
+
+  </head>
+
+  <!-- Body -->
+  <body class="fixed-top-nav ">
+
+    <!-- Header -->
+    <header>
+
+      <!-- Nav Bar -->
+      <nav id="navbar" class="navbar navbar-light navbar-expand-sm fixed-top">
+        <div class="container">
+          <a class="navbar-brand title font-weight-lighter" href="https://michaelxschen.github.io/">Xusheng Chen's Homepage</a>
+          <!-- Navbar Toggle -->
+          <button class="navbar-toggler collapsed ml-auto" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar top-bar"></span>
+            <span class="icon-bar middle-bar"></span>
+            <span class="icon-bar bottom-bar"></span>
+          </button>
+
+          <div class="collapse navbar-collapse text-right" id="navbarNav">
+            <ul class="navbar-nav ml-auto flex-nowrap">
+
+              <!-- About -->
+              <li class="nav-item ">
+                <a class="nav-link" href="/">About</a>
+              </li>
+              
+              <!-- Blog -->
+              <li class="nav-item active">
+                <a class="nav-link" href="/blog/">Blog</a>
+              </li>
+
+              <!-- Other pages -->
+              <li class="nav-item ">
+                <a class="nav-link" href="/cv/">CV</a>
+              </li>
+              <li class="nav-item ">
+                <a class="nav-link" href="/publications/">Publications</a>
+              </li>
+
+              <!-- Toogle theme mode -->
+              <div class="toggle-container">
+                <a id="light-toggle">
+                  <i class="fas fa-moon"></i>
+                  <i class="fas fa-sun"></i>
+                </a>
+              </div>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Content -->
+    <div class="container mt-5">
+      <!-- _layouts/post.html -->
+
+<div class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">No-stale-reads vs real-time ordering</h1>
+    <p class="post-meta">March 1, 2022</p>
+    <p class="post-tags">
+      <a href="/blog/2022"> <i class="fas fa-calendar fa-sm"></i> 2022 </a>
+        ·  
+        <a href="/blog/tag/consistency">
+          <i class="fas fa-hashtag fa-sm"></i> consistency</a>  
+          <a href="/blog/tag/distributed-database">
+          <i class="fas fa-hashtag fa-sm"></i> distributed-database</a>  
+          
+        ·  
+        <a href="/blog/category/thoughts">
+          <i class="fas fa-tag fa-sm"></i> thoughts</a>  
+          
+
+    </p>
+  </header>
+
+  <article class="post-content">
+    <p>TL;DR</p>
+
+<p>For single key, no-stale-reads considers each read independently, 
+while linearizability also restricts each read value w.r.t. other reads.
+For multiple keys, things become a little bit complicated the overall theme is the same.</p>
+
+<h2 id="background">Background</h2>
+
+<p>When doing my projects, many times I got confused with the guarantee
+of “the system provides no stale reads” (i.e., regularity) and “the system preserves
+all real-time ordering requirements” (i.e.,  linearizability). I found two constructions to distinguish
+them. The first construction (from 
+<a class="citation" href="#nonstale:stack">(Overflow, n.d.)</a> is for single-key operations as shown below, where
+<code class="language-plaintext highlighter-rouge">wwww</code> and <code class="language-plaintext highlighter-rouge">rrr</code> means the duration of one single write/read operation.</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Key(x);  0                  1
+P1:         wwwwwwwww(x=1)
+P2:                rr(0)        
+P3:         rr
+</code></pre></div></div>
+<p>In this construction,
+P3’s read may return 0 or 1 if the system ensures “no stale reads”
+because the read is concurrent to the write. However, P3’s read must return
+0 as it precedes P2’s read in real-time: P3’s read must always be ordered before 
+P2’s read in any history/schedule. Symmetrically, if P3’s read returns 
+1, then P2’s read must not return 0.</p>
+
+<p>The second construction is for transactional systems (the construction in my DAST paper <a class="citation" href="#chen2021achieving">(Chen et al., 2021)</a>).
+Consider the following construction 
+with two keys A and B. T2 and T3 only access one key each, while T1 is a distributed 
+transaction accessing both keys. 
+In this construction, we have $T2 -&gt; T3$ in real-time. However, the serializable order
+(i.e., the equivalent serial schedule for serializability)
+among these three transactions is $T3-&gt;T1-&gt;T2$, which breaks the real time-order. 
+This construction does ensure no stale reads, but does not preserve all real-time 
+ordering requirements.</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>A:   T1    T2
+B:              T3    T1
+</code></pre></div></div>
+
+<p>Recently, I read the RSS paper <a class="citation" href="#helt2021regular">(Helt et al., 2021)</a>
+, which helps to shed light on this problem. 
+RSS ensures all reads see finished writes (i.e., no stale reads) and preserves 
+the real-time ordering from write operations/transactions to other operations. 
+RSS is proved to be <em>invariant-equivalent</em> to linearizability.
+To understand the idea of invariant-equivalence, we need to first distinguish the
+definitions of <em>invariants</em> and <em>anomalies</em>. Usually, invariants are defined 
+from system/service’s pov, while anomalies are defined from the external view. 
+For instance, a system/service cannot track whether two processes/clients 
+contacts externally (e.g., Alice calls Bob after its operation finishes). Therefore, 
+we usually refer to strict serializability and linearizability as <em>external consistency</em>:
+the system/service is consistent even if one views the external world altogether where
+processes/clients can communicate with no delay.</p>
+
+<p>RSS paper writes, “like 
+all prior <em>regular</em> models, (RSS ensures that) reads must return a value at least 
+as recent as the most recently complete conflicting writes”. 
+This sentence motivates me to dig deeper into the classical papers about
+consistency levels.</p>
+
+<h2 id="shared-registers">Shared Registers</h2>
+
+<p>The basic single-write multiple-writer shared register model was first proposed by 
+Lamport in 1986 <a class="citation" href="#lamport1986interprocess">(Lamport, 1986)</a>, together with the <em>atomic, regular, and safe</em> consistency models. 
+This model only has one writer and one key, which serve as the base for all 
+subsequent consistency models.</p>
+
+<ul>
+  <li>
+    <p>A safe register ensures that a read not overlapping with writes returns the latest 
+writes; otherwise, the reads can return any value (even a corrupted one). 
+Note that in the basic model, 
+there is only one writer, so no concurrent writes. Such registers may show in shared 
+registers on chips <a class="citation" href="#lamport1986interprocess">(Lamport, 1986)</a>.</p>
+  </li>
+  <li>
+    <p>A regular register is a little stronger. It also requires that reads must return the 
+value that is at least as recent as latest finished writes, while it can freely 
+choose whether to return the values of concurrent writes.</p>
+  </li>
+  <li>
+    <p>An atomic register provides the strongest guarantee. In addition to previous requirements, 
+it also requires that a subsequent read cannot returns a earlier value than a read 
+finished before it (i.e., linearizability).</p>
+  </li>
+</ul>
+
+<h2 id="back-to-the-motivation-cases">Back to the motivation cases.</h2>
+
+<p>It is obvious that in the first construction, a consistency model ensuring this can be called as 
+<em>regular</em>, like in RSS. Note that this is not Monotonic Read guarantee, as MR guarantee is defined
+only within session. It is also <em>sequential</em>, but not linearizability.</p>
+
+<p>In the second construction, however, things are a little complicated as the original model 
+only involves one register. 
+In essence, the difference between the two constructions is that P3’s read is read-only, while T2 is not.</p>
+
+<p>The key ambiguity sources from the fact that Lamport’s original paper only defines 
+regularity for single register: read must see a version at least as recent as 
+the latest finished writes. However, this construction has two registers, but the definition 
+does not discuss the relation of two (unrelated) writes on two different registers. 
+As far as I am concerned, there 
+is only one work <a class="citation" href="#viotti2016consistency">(Viotti &amp; Vukolić, 2018)</a> that
+defines regularity for multiple keys with the following three requirements:</p>
+
+<ul>
+  <li>There is an equivalent total order (a.k.a., the arbitration order) of all requests.</li>
+  <li>This order respects the real-time order (a.k.a., the “return before” relation) from writes to any operations.</li>
+  <li>The system is return value consistent, i.e., the return value is as expected. This is 
+    a very weak guarantee, but the atomic register model does not ensure this.</li>
+</ul>
+
+<p>This definition also requires the real-time ordering from a write to an un-related 
+operation must also be preserved. The RSS paper follows this definition. If we adopt
+this definition, the second construction is <em>not regular</em>, as it does not 
+the real-time ordering between T2 and T3 if T2 contains write operations.</p>
+
+<p>However, this general definition has not reached an agreement in academia/industry,
+as the intuition behind Lamport’s definition of “regularity” is that the register 
+has no stale reads: all finished writes must be visible to subsequent reads
+until it is overwritten.</p>
+
+<p>I will discuss more regular consistency models defined in <a class="citation" href="#shao2011multiwriter">(Shao et al., 2011)</a>
+on multi-writer regularity
+in subsequent posts.</p>
+
+<h2 id="references">References:</h2>
+
+<ol class="bibliography">
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="helt2021regular" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">Jeffrey Helt,  Matthew Burke,  Amit Levy,  and Wyatt Lloyd
+          </span>.
+          <!-- Title -->
+          <span class="title">Regular Sequential Serializability and Regular Sequential Consistency</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>In Proceedings of the ACM SIGOPS 28th Symposium on Operating Systems Principles</em> 2021
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="chen2021achieving" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">
+                  <em>Xusheng Chen </em>, <a href="https://haozesong.github.io/" target="_blank" rel="noopener noreferrer">Haoze Song </a>, <a href="http://i.cs.hku.hk/~jyjiang/" target="_blank" rel="noopener noreferrer">Jianyu Jiang </a>, Chaoyi Ruan,  <a href="http://staff.ustc.edu.cn/~chengli7/" target="_blank" rel="noopener noreferrer">Cheng Li </a>, Sen Wang,  Gong Zhang,  <a href="http://i.cs.hku.hk/~ckcheng" target="_blank" rel="noopener noreferrer">Reynold Cheng </a>, and <a href="http://i.cs.hku.hk/~heming/" target="_blank" rel="noopener noreferrer">Heming Cui </a>
+                  
+          </span>.
+          <!-- Title -->
+          <span class="title">Achieving low tail-latency and high scalability for serializable transactions in edge computing</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>In Proceedings of the Sixteenth European Conference on Computer Systems</em> 2021
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="viotti2016consistency" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">Paolo Viotti,  and Marko Vukolić
+          </span>.
+          <!-- Title -->
+          <span class="title">Consistency in non-transactional distributed storage systems</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>ACM Computing Surveys (CSUR)</em> 2018
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="shao2011multiwriter" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">Cheng Shao,  Jennifer L Welch,  Evelyn Pierce,  and Hyunyoung Lee
+          </span>.
+          <!-- Title -->
+          <span class="title">Multiwriter consistency conditions for shared memory registers</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>SIAM Journal on Computing</em> 2011
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="lamport1986interprocess" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">Leslie Lamport
+          </span>.
+          <!-- Title -->
+          <span class="title">On interprocess communication</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em>Distributed computing</em> 1986
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+<li>
+<!-- _layouts/bib.html -->
+      <div class="row">
+        <!-- Entry bib key -->
+        <div id="nonstale:stack" class="col-sm-12">
+        
+          <!-- Author -->
+          <span class="author">Stack Overflow
+          </span>.
+          <!-- Title -->
+          <span class="title">https://stackoverflow.com/questions/8871633/whats-the-difference-between-safe-regular-and-atomic-registers</span>.
+          <!-- Journal/Book title and date -->
+          <span class="periodical">
+            <em></em> 1986
+          </span>
+        
+          <!-- Links/Buttons -->
+          <div class="links">
+          </div>
+
+          
+        </div>
+      </div>
+</li>
+</ol>
+
+
+  </article>
+
+</div>
+
+    </div>
+
+    <!-- Footer -->    
+    <footer class="fixed-bottom">
+      <div class="container mt-0">
+        © Copyright 2022 Xusheng  Chen. Powered by <a href="https://jekyllrb.com/" target="_blank" rel="noopener noreferrer">Jekyll</a> with <a href="https://github.com/alshedivat/al-folio" target="_blank" rel="noopener noreferrer">al-folio</a> theme. Hosted by <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer">GitHub Pages</a>.
+Last updated: September 12, 2022.
+      </div>
+    </footer>
+
+    <!-- JavaScripts -->
+    <!-- jQuery -->
+  <script src="https://unpkg.com/jquery@3.6.0/dist/jquery.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+
+    <!-- Bootsrap & MDB scripts -->
+  <script src="https://unpkg.com/@popperjs/core@2.11.2/dist/umd/popper.min.js" integrity="sha256-l/1pMF/+J4TThfgARS6KwWrk/egwuVvhRzfLAMQ6Ds4=" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/bootstrap@4.6.1/dist/js/bootstrap.min.js" integrity="sha256-SyTu6CwrfOhaznYZPoolVw2rxoY7lKYKQvqbtqN93HI=" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/mdbootstrap@4.20.0/js/mdb.min.js" integrity="sha256-NdbiivsvWt7VYCt6hYNT3h/th9vSTL4EDWeGs5SN3DA=" crossorigin="anonymous"></script>
+
+    <!-- Masonry & imagesLoaded -->
+  <script defer src="https://unpkg.com/masonry-layout@4.2.2/dist/masonry.pkgd.min.js" integrity="sha256-Nn1q/fx0H7SNLZMQ5Hw5JLaTRZp0yILA/FRexe19VdI=" crossorigin="anonymous"></script>
+  <script defer src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
+  <script defer src="/assets/js/masonry.js" type="text/javascript"></script>
+    
+  <!-- Medium Zoom JS -->
+  <script src="https://unpkg.com/medium-zoom@1.0.6/dist/medium-zoom.min.js" integrity="sha256-EdPgYcPk/IIrw7FYeuJQexva49pVRZNmt3LculEr7zM=" crossorigin="anonymous"></script>
+  <script src="/assets/js/zoom.js"></script><!-- Load Common JS -->
+  <script src="/assets/js/common.js"></script>
+
+    <!-- MathJax -->
+  <script type="text/javascript">
+    window.MathJax = {
+      tex: {
+        tags: 'ams'
+      }
+    };
+  </script>
+  <script defer type="text/javascript" id="MathJax-script" src="https://unpkg.com/mathjax@3.2.0/es5/tex-mml-chtml.js"></script>
+  <script defer src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id="></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', '');
+  </script><!-- Panelbear Analytics - We respect your privacy -->
+  <script async src="https://cdn.panelbear.com/analytics.js?site="></script>
+  <script>
+    window.panelbear = window.panelbear || function() { (window.panelbear.q = window.panelbear.q || []).push(arguments); };
+    panelbear('config', { site: '' });
+  </script>
+  </body>
+</html>
+
